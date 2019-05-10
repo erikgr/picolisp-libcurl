@@ -7,8 +7,9 @@
 
 [setq *LIBCURL* "/usr/lib/libcurl.so"]
 
-[load "curl_enums.l"]
 
+[load "curl_enums.l"]
+#[load "callbacks.l"]
 
 [class +CurlContext]
 [dm T ( _url _headers _method _data )
@@ -137,25 +138,27 @@
 
 
 (setq *CURL-DEBUG* T)
+(setq *CURL* (curl-easy-init))
 
-# trying this thing out..
-#
-# (setq ctx (new '(+CurlContext) "https://api.binance.com/api/v1/exchangeInfo" NIL NIL NIL))
-# (curl-context ctx)
+#(setq ctx (new '(+CurlContext) "https://api.binance.com/api/v1/exchangeInfo" NIL NIL NIL))
+#(curl-context ctx)
 
-
-(setq *CURL*
-    (curl-easy-init))
-
+(setq databuffer (native "./pilcurl_callbacks.so" "buffer_new" 'N 10000))
 (setq outdata (native *LIBCURL* "fopen" 'N "/tmp/curldata.txt" "w"))
-(curl-easy-setopt *CURL* CURLOPT_URL "http://ifconfig.co")
+(setq callback (native "./pilcurl_callbacks.so" "get_callback" 'N NIL))
+
+(prinl "databuf : " databuffer)
+(prinl "outdata : " outdata)
+(prinl "callback: " callback)
+
+(curl-easy-setopt *CURL* CURLOPT_URL "https://api.binance.com/api/v1/exchangeInfo")
 (curl-easy-setopt *CURL* CURLOPT_USERAGENT "pil_agent_0.0")
-(curl-easy-setopt *CURL* CURLOPT_BUFFERSIZE 10000)
-(curl-easy-setopt *CURL* CURLOPT_WRITEDATA outdata)			# Something weird is happening here.
-									# looks like WRITEFUNCTION may be called
-									# zero or multiple times. need to handle
-									# that. :( 
+(curl-easy-setopt *CURL* CURLOPT_WRITEDATA databuffer)
+(curl-easy-setopt *CURL* CURLOPT_WRITEFUNCTION callback)
 (curl-easy-perform *CURL*)
+
+(prinl (struct databuffer '(I I S)))
+
 (curl-easy-cleanup *CURL*)
 
 

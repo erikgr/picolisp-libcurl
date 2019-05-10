@@ -1,6 +1,4 @@
 /*
- * WIP:
- *
  * Provides callback functions for libcurl.
  */
 
@@ -9,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
+
+typedef size_t (*callback_t)(char *, size_t, size_t, void*);
 
 typedef struct s_simple_buffer {
     int size;
@@ -31,16 +31,16 @@ simple_buffer *buffer_new (size_t initial_size) {
 
 
 /*
- * Writes incoming data to simple buffer.
+ * Writes incoming bytes to simple buffer.
  * Expands buffer to fit incoming data.
  */
-extern size_t write_callback_simple_buffer (char *in_data,
+size_t write_callback_simple_buffer (char *in_data,
 					size_t size,
 					size_t nmemb,
 					void *dst_buffer) {
 
     simple_buffer *buffer = (simple_buffer *) dst_buffer;
-    int total_size = size + nmemb;
+    int total_size = size + nmemb -1;
 
     if((buffer->size - buffer->used) < total_size) {
 	int newsize = (buffer->size + (2*total_size));
@@ -56,33 +56,9 @@ extern size_t write_callback_simple_buffer (char *in_data,
 }
 
 
-
 /*
- * work in progress.
+ * Returns a callback function
  */
-int main () {
-
-    simple_buffer *buf = buffer_new(20);
-
-    char copydata[] = "123456789";
-
-    write_callback_simple_buffer(copydata, sizeof(char), strlen(copydata)-1, buf);
-    write_callback_simple_buffer(copydata, sizeof(char), strlen(copydata)-1, buf);
-    write_callback_simple_buffer(copydata, sizeof(char), strlen(copydata)-1, buf);
-    write_callback_simple_buffer(copydata, sizeof(char), strlen(copydata)-1, buf);
-
-    printf("got data: %s\nbuffersize: %d\nbufferused: %d\n",
-	buf->data,
-	buf->size,
-	buf->used);
-
-    free(buf->data);
-    free(buf);
-
-    return 0;
-}
-
-
-
-
-
+callback_t get_callback (void) {
+	return write_callback_simple_buffer;
+} 
