@@ -151,7 +151,7 @@
 (prinl "outdata : " outdata)
 (prinl "callback: " callback)
 
-(curl-easy-setopt *CURL* CURLOPT_URL "https://api.binance.com/api/v1/exchangeInfo")
+(curl-easy-setopt *CURL* CURLOPT_URL "https://ifconfig.co")
 (curl-easy-setopt *CURL* CURLOPT_USERAGENT "pil_agent_0.0")
 (curl-easy-setopt *CURL* CURLOPT_WRITEDATA databuffer)
 (curl-easy-setopt *CURL* CURLOPT_WRITEFUNCTION callback)
