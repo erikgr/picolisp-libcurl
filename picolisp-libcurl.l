@@ -4,89 +4,62 @@
 #
 
 
-
 [setq *LIBCURL* "/usr/lib/libcurl.so"]
+[setq *CALLBACKS* "./callbacks.so"]
+[setq *GARBAGE* NIL]
 
 
 [load "curl_enums.l"]
-#[load "callbacks.l"]
 
-[class +CurlContext]
+
+[class +HTTPRequest]
 [dm T ( _url _headers _method _data )
     (=: url _url)
-    (=: headers _header)
+    (=: headers _headers)
     (=: method (or _method "GET"))
-    (=: out_data _out_data)
-    (=: in_data _in_data)
-    (=: curl_error NIL)
-]
+    (=: data _data) ]
 
 
-[de curl-debug ( func_name varslist )
-    (prinl
-        "Entering: " func_name "\n"
-        "Parameters:\n"
-        (when varslist
-            (mapcar '((X) (pack (car X) " -- " (cdr X) "\n")) varslist) ) ) ]
+[class +HTTPResponse]
+[dm T ()
+    (=: data NIL)
+    (=: info-http-code (native *CALLBACKS* "get_long_arr" 'N 1) ) ]
 
+
+(setq struct_simple_buffer_t
+    '(I I S))
 
 [de curl-global-init ()
-    (when *CURL-DEBUG*
-        (curl-debug "curl-global-init"))
-    # CURL curl_global_init(void)
     (native *LIBCURL* "curl_global_init" 'N NIL) ]
 
 
 [de curl-global-cleanup ()
-    (when *CURL-DEBUG*
-        (curl-debug "curl_global_cleanup"))
-    # ?? curl_global_cleanup(void)
     (native *LIBCURL* "curl_global_cleanup" NIL NIL) ]
 
 
 [de curl-easy-init ()
-    (when *CURL-DEBUG*
-        (curl-debug "curl-easy-init"))
-    # CURL curl_easy_init(void)
     (native *LIBCURL* "curl_easy_init" 'N NIL) ]
 
 
 [de curl-easy-setopt ( curl curl-opt curl-opt-val )
-    (when *CURL-DEBUG*
-        (curl-debug "curl-easy-setopt"
-            (list
-                (cons 'curl curl)
-                (cons 'curl-opt curl-opt)
-                (cons 'curl-opt-val curl-opt-val))))
-    # CURLCode curl_easy_setopt(CURL curl, CURLOPT curlopt, ? curl-opt-val)
+    (unless curl-opt
+	(throw 'invalid-opt-exception))
     (native *LIBCURL* "curl_easy_setopt" 'I curl curl-opt curl-opt-val) ]
 
 
 [de curl-easy-getinfo ( curl curl-info curl-info-dest )
-    (when *CURL-DEBUG*
-        (curl-debug "curl-easy-getinfo"
-            (list
-                (cons 'curl curl)
-                (cons 'curl-info curl-info)
-                (cons 'curl-info-dest curl-info-dest))))
-    # CURLCODE curl_easy_getinfo(CURL curl, CURLOPT curl-opt, ? *dst)
+    (unless curl-info
+	(throw 'invalid-opt-exception))
     (native *LIBCURL* "curl_easy_getinfo" 'I curl curl-info curl-info-dest) ]
 
 
 [de curl-easy-perform ( curl )
-    (when *CURL-DEBUG*
-        (curl-debug "curl-easy-perform"
-            (list
-                (cons 'curl curl))))
-    # CURLCODE curl_easy_perform(CURL curl)
+    (unless curl
+	(throw 'null-pointer-exception))
     (native *LIBCURL* "curl_easy_perform" 'I curl) ]
 
 
 [de curl-easy-cleanup ( curl )
-    (when *CURL-DEBUG*
-        (curl-debug "curl-easy-cleanup"
-            (list
-                (cons 'curl curl))))
     (native *LIBCURL* "curl_easy_cleanup" NIL curl) ]
 
 
@@ -94,71 +67,99 @@
     (native *LIBCURL* "curl_easy_strerror" 'S curlcode) ]
 
 
-[de curl-quick-defaults ( curl )
-    (curl-easy-setopt curl CURLOPT_USERAGENT "pilcurl_7.65.0-DEV") ]
+[de curl-easy-urlencode ( str )
+    (native *LIBCURL* "curl_easy_escape" 'S str) ]
 
 
-[de curl-context ( context )
-    (when *CURL-DEBUG*
-        (curl-debug "curl-context"
-         (list
-             (cons 'url (; context url))
-             (cons 'headers (; context headers))
-             (cons 'method (; context method))
-             (cons 'data (; context data)))))
-    (let (
-          tmpcurl (curl-easy-init)
-          outfile "/tmp/erik"
-         )
-        (curl-easy-setopt tmpcurl CURLOPT_FOLLOWLOCATION 1)
-        (curl-easy-setopt tmpcurl CURLOPT_BUFFERSIZE 512000)
-        (curl-easy-setopt tmpcurl CURLOPT_URL (; context url))
-        (curl-easy-setopt tmpcurl CURLOPT_WRITEDATA (native *LIBCURL* "fopen" 'N outfile "w"))
-        (curl-easy-setopt tmpcurl CURLOPT_WRITEFUNCTION 0)
-        # GET
-        (when (= "GET" (; context method))
-            (curl-easy-setopt tmpcurl CURLOPT_HTTPGET 1))
-        # POST
-        (when (= "POST" (; context method))
-            (curl-easy-setopt tmpcurl CURLOPT_POST 1)
-            (curl-easy-setopt tmpcurl CURLOPT_COPYPOSTFIELDS (; context out_data)))
-        # PUT
-        (when (= "PUT" (; context method))
-            (curl-easy-setopt tmpcurl CURLOPT_PUT 1))
-        # DELETE
-        #(when (= "DELETE" (; context method))
-        #    (curl-easy-setopt tmpcurl CURLOPT_))
-
-        (prinl "outfile: " outfile)
-        (prinl (curl-easy-strerror (curl-easy-perform tmpcurl)))
-        (curl-easy-cleanup tmpcurl)
-    )
-]
+[de curl_easy_urldecode ( str )
+    (native *LIBCURL* "curl_easy_unescape" 'S str) ]
 
 
+[de curl-easy-version ()
+    (native *LIBCURL* "curl_version" 'S) ]
 
-(setq *CURL-DEBUG* T)
-(setq *CURL* (curl-easy-init))
 
-#(setq ctx (new '(+CurlContext) "https://api.binance.com/api/v1/exchangeInfo" NIL NIL NIL))
-#(curl-context ctx)
+[de curl-easy-getdate ( datestr )
+    (native *LIBCURL* "curl_getdate" 'I datestr 0) ]
 
-(setq databuffer (native "./pilcurl_callbacks.so" "buffer_new" 'N 10000))
-(setq outdata (native *LIBCURL* "fopen" 'N "/tmp/curldata.txt" "w"))
-(setq callback (native "./pilcurl_callbacks.so" "get_callback" 'N NIL))
 
-(prinl "databuf : " databuffer)
-(prinl "outdata : " outdata)
-(prinl "callback: " callback)
+[de curl-slist-append ( container data )
+    # container can be null (0) to create new list.
+    (let (ptr (native *LIBCURL* "curl_slist_append" 'N container data))
+	(conc *GARBAGE* (cons 'malloc ptr))
+	ptr ) ]
 
-(curl-easy-setopt *CURL* CURLOPT_URL "https://ifconfig.co")
-(curl-easy-setopt *CURL* CURLOPT_USERAGENT "pil_agent_0.0")
-(curl-easy-setopt *CURL* CURLOPT_WRITEDATA databuffer)
-(curl-easy-setopt *CURL* CURLOPT_WRITEFUNCTION callback)
-(curl-easy-perform *CURL*)
 
-(prinl (struct databuffer '(I I S)))
+[de curl-slist-free-all ( container )
+    (unless container
+	(throw 'null-pointer-exception))
+    (native *LIBCURL* "curl_slist_free_all" NIL container) ]
 
-(curl-easy-cleanup *CURL*)
+
+# container must be freed with curl_slist_free_all
+[de curl-headers ( headers )
+    (let (container (curl-slist-append 0 "Accept:"))
+	(for H headers
+	    (setq container (native *LIBCURL* "curl_slist_append" 'N container H)))
+	(unless container
+	    (throw 'null-pointer-exception))
+	container ) ]
+
+
+[de curl-get ( url headers )
+    (let (tmpcurl (curl-easy-init)
+	data-buffer (native *CALLBACKS* "buffer_new" 'N 1024)
+	tmp-headers (when headers (curl-headers headers))
+	http-response (new '(+HTTPResponse)))
+		(curl-easy-setopt tmpcurl CURLOPT_URL url)
+		(curl-easy-setopt tmpcurl CURLOPT_WRITEDATA data-buffer)
+		(curl-easy-setopt tmpcurl CURLOPT_WRITEFUNCTION (native *CALLBACKS* "get_callback" 'N))
+		(when tmp-headers (curl-easy-setopt tmpcurl CURLOPT_HTTPHEADER tmp-headers))
+		(curl-easy-setopt tmpcurl CURLOPT_FOLLOWLOCATION 1)
+		(curl-easy-getinfo tmpcurl CURLINFO_HTTP_CODE (; http-restponse info-http-code))
+		(put http-response 'curl-msg (curl-easy-strerror (curl-easy-perform tmpcurl)))
+		(put http-response 'data (caddr (struct data-buffer struct_simple_buffer_t)))
+		(when tmp-headers (curl-slist-free-all tmp-headers))
+		(native *CALLBACKS* "free" 'I data-buffer)
+		(curl-easy-cleanup tmpcurl)
+	http-response ) ]
+
+
+[de curl-post ( url headers data )
+    (let (tmpcurl (curl-easy-init)
+	data-buffer (native *CALLBACKS* "buffer_new" 'N 1024)
+	tmp-headers (when headers (curl-headers headers))
+	http-response (new '(+HTTPResponse)))
+		(curl-easy-setopt tmpcurl CURLOPT_URL url)
+		(curl-easy-setopt tmpcurl CURLOPT_WRITEDATA data-buffer)
+		(curl-easy-setopt tmpcurl CURLOPT_WRITEFUNCTION (native *CALLBACKS* "get_callback" 'N))
+		(when data
+		    (curl-easy-setopt tmpcurl CURLOPT_POSTFIELDSIZE (length data))
+		    (curl-easy-setopt tmpcurl CURLOPT_COPYPOSTFIELDS data))
+		(when tmp-headers
+		    (curl-easy-setopt tmpcurl CURLOPT_HTTPHEADER tmp-headers))
+		(curl-easy-getinfo tmpcurl CURLINFO_HTTP_CODE (; http-response info-http-code))
+		(put http-response 'curl-msg (curl-easy-strerror (curl-easy-perform tmpcurl)))
+		(put http-response 'data (caddr (struct data-buffer struct_simple_buffer_t)))
+		(when tmp-headers (curl-slist-free-all tmp-headers))
+		(native *CALLBACKS* "free" 'I data-buffer)
+		(curl-easy-cleanup tmpcurl)
+	http-response ) ]
+
+
+
+
+#(setq *CURL-DEBUG* T)
+#(setq *CURL* (curl-easy-init))
+#(setq databuffer (native *CALLBACKS* "buffer_new" 'N 10000))
+#(setq outdata (native *LIBCURL* "fopen" 'N "/tmp/curldata.txt" "w"))
+#(setq callback (native *CALLBACKS* "get_callback" 'N NIL))
+#(curl-easy-setopt *CURL* CURLOPT_URL "https://ifconfig.co")
+#(curl-easy-setopt *CURL* CURLOPT_USERAGENT "pil_agent_0.0")
+#(curl-easy-setopt *CURL* CURLOPT_WRITEDATA databuffer)
+#(curl-easy-setopt *CURL* CURLOPT_WRITEFUNCTION callback)
+#(curl-easy-perform *CURL*)
+#(prinl (struct databuffer '(I I S)))
+#(curl-easy-cleanup *CURL*)
 
 

@@ -62,3 +62,32 @@ size_t write_callback_simple_buffer (char *in_data,
 callback_t get_callback (void) {
 	return write_callback_simple_buffer;
 } 
+
+
+int * get_int_arr (size_t n_elements){
+    int *ptr = malloc(n_elements * sizeof(int));
+    return ptr;
+}
+
+long * get_long_arr (size_t n_elements){
+    long *ptr = malloc(n_elements * sizeof(long));
+    return ptr;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
