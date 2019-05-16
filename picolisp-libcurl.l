@@ -130,20 +130,54 @@
 	data-buffer (native *CALLBACKS* "buffer_new" 'N 1024)
 	tmp-headers (when headers (curl-headers headers))
 	http-response (new '(+HTTPResponse)))
-		(curl-easy-setopt tmpcurl CURLOPT_URL url)
-		(curl-easy-setopt tmpcurl CURLOPT_WRITEDATA data-buffer)
-		(curl-easy-setopt tmpcurl CURLOPT_WRITEFUNCTION (native *CALLBACKS* "get_callback" 'N))
-		(when data
-		    (curl-easy-setopt tmpcurl CURLOPT_POSTFIELDSIZE (length data))
-		    (curl-easy-setopt tmpcurl CURLOPT_COPYPOSTFIELDS data))
-		(when tmp-headers
-		    (curl-easy-setopt tmpcurl CURLOPT_HTTPHEADER tmp-headers))
-		(curl-easy-getinfo tmpcurl CURLINFO_HTTP_CODE (; http-response info-http-code))
-		(put http-response 'curl-msg (curl-easy-strerror (curl-easy-perform tmpcurl)))
-		(put http-response 'data (caddr (struct data-buffer struct_simple_buffer_t)))
-		(when tmp-headers (curl-slist-free-all tmp-headers))
-		(native *CALLBACKS* "free" 'I data-buffer)
-		(curl-easy-cleanup tmpcurl)
+	    (curl-easy-setopt tmpcurl CURLOPT_URL url)
+	    (curl-easy-setopt tmpcurl CURLOPT_WRITEDATA data-buffer)
+	    (curl-easy-setopt tmpcurl CURLOPT_WRITEFUNCTION (native *CALLBACKS* "get_callback" 'N))
+	    (when data
+	        (curl-easy-setopt tmpcurl CURLOPT_POSTFIELDSIZE (length data))
+	        (curl-easy-setopt tmpcurl CURLOPT_COPYPOSTFIELDS data))
+	    (when tmp-headers
+		(curl-easy-setopt tmpcurl CURLOPT_HTTPHEADER tmp-headers))
+	    (curl-easy-getinfo tmpcurl CURLINFO_HTTP_CODE (; http-response info-http-code))
+	    (put http-response 'curl-msg (curl-easy-strerror (curl-easy-perform tmpcurl)))
+	    (put http-response 'data (caddr (struct data-buffer struct_simple_buffer_t)))
+	    (when tmp-headers (curl-slist-free-all tmp-headers))
+	    (native *CALLBACKS* "free" 'I data-buffer)
+	    (curl-easy-cleanup tmpcurl)
+	http-response ) ]
+
+
+
+[de curl-put ( url headers data )
+    (let (tmpcurl (curl-easy-init)
+	data-buffer (native *CALLBACKS* "buffer_new" 'N 1024)
+        tmp-headers (when headers (curl-headers headers))
+        tmp-file-path (tmp ".tmp.putdata")
+        tmp-file-ptr (when data (native *CALLBACKS* "fopen" 'N tmp-file-path "r"))
+        http-response (new '(+HTTPResponse)))
+	    (prinl "1")
+            (out tmp-file-path (prin data))
+	    (prin tmp-file-path)
+	    (curl-easy-setopt tmpcurl CURLOPT_URL url)
+	    (curl-easy-setopt tmpcurl CURLOPT_WRITEDATA data-buffer)
+	    (curl-easy-setopt tmpcurl CURLOPT_WRITEFUNCTION (native *CALLBACKS* "get_callback" 'N))
+	    (when data
+		(curl-easy-setopt tmpcurl CURLOPT_UPLOAD 1)
+		(curl-easy-setopt tmpcurl CURLOPT_READDATA tmp-file-ptr))
+	    (prinl "2")
+	    (when headers
+		(curl-easy-setopt tmpcurl CURLOPT_HTTPHEADER tmp-headers))
+	    (curl-easy-getinfo tmpcurl CURLINFO_HTTP_CODE (; http-response info-http-code))
+	    (wait 1000000)
+	    (put http-response 'curl-msg (curl-easy-strerror (curl-easy-perform tmpcurl)))
+	    (put http-response 'data (caddr (struct data-buffer struct_simple_buffer_t)))
+	    (prinl "3")
+	    (when tmp-headers (curl-slist-free-all tmp-headers))
+	    (native *CALLBACKS* "free" 'I data-buffer)
+	    (when data (native *CALLBACKS* "free" 'I tmp-file-ptr))
+	    (call "rm" tmp-file-path)
+	    (curl-easy-cleanup tmpcurl)
+	    (prinl "4")
 	http-response ) ]
 
 

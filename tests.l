@@ -32,6 +32,16 @@
 		"Curl message: "(; This curl-msg) )
     This ) ]
 
+
+[de http-put-test ()
+    (with (curl-put "https://postman-echo.com/put"
+	'("Content-Type: text/plain") "PUTDATA" )
+	    (prinl
+		"Response: \n\n" (; This data) "\n\n"
+		"Curl message: "(; This curl-msg) )
+    This ) ]
+
+
 [de http-request-headers-test ()
     (with (curl-get "https://postman-echo.com/headers"
 	'("X-fish-bone: ><)))*>"))
@@ -63,6 +73,11 @@
 (prinl ">> Testing HTTP POST (application/json)")
 (prinl "")
 (setq resp-post-application-json (http-post-application-json-test))
+(prinl "")
+(prinl "-----------------------------------------")
+(prinl ">> Testing HTTP PUT")
+(prinl "")
+(setq resp-put (http-put-test))
 (prinl "")
 (prinl "-----------------------------------------")
 (prinl ">> Testing HTTP HEADERS (request)")
