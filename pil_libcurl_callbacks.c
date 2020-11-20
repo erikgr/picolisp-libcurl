@@ -73,21 +73,3 @@ long * get_long_arr (size_t n_elements){
     long *ptr = malloc(n_elements * sizeof(long));
     return ptr;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
