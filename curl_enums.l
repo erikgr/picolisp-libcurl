@@ -5,6 +5,7 @@
 #
 
 [setq
+	CURLOPT_UPLOAD                      46
 	CURLOPT_POSTFIELDSIZE               60
 	CURLOPT_FOLLOWLOCATION              52
 	CURLOPT_ABSTRACT_UNIX_SOCKET        10264
